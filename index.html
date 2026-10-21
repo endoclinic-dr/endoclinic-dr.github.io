@@ -1,0 +1,978 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Dashboard · Endoclinic</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+:root{--navy:#003B71;--teal:#0D7A8A;--cyan:#1EA7C4;--green:#1E8449;--red:#C0392B;--amber:#D4A017;--bg:#EEF2F7;--card:#fff;--line:#D0DAE8;--txt:#1F2937;--muted:#6B7280;--soft:#B8D4DF}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;font-size:14px}
+
+/* ── HEADER BI ─────────────────────────────────────────────── */
+.bi-titlebar{background:var(--navy);color:#fff;text-align:center;padding:13px 16px;font-size:19px;font-weight:700;letter-spacing:.4px}
+.ctrl-bar{background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:8px 16px;flex-wrap:wrap;position:sticky;top:0;z-index:10}
+.ctrl-bar h2{flex:1;font-size:15px;color:var(--navy);font-weight:700;min-width:140px}
+.pick{display:flex;flex-direction:column;font-size:11px;color:var(--navy);font-weight:700;gap:2px}
+select,button{font:inherit}
+select{padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;min-width:130px}
+.btn{padding:7px 14px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--navy);font-weight:700;cursor:pointer;font-size:13px}
+.btn:hover{background:var(--bg)}
+nav{background:#fff;border-bottom:2px solid var(--line);display:flex;gap:0;padding:0 14px;overflow-x:auto}
+nav button{border:0;background:none;padding:10px 16px;color:var(--muted);font-weight:600;white-space:nowrap;border-bottom:3px solid transparent;cursor:pointer;font-size:14px;margin-bottom:-2px}
+nav button.on{color:var(--navy);border-bottom-color:var(--navy)}
+main{padding:14px;max-width:1500px;margin:0 auto}
+
+/* ── GRID ───────────────────────────────────────────────────── */
+.grid{display:grid;gap:10px;margin-bottom:10px}
+.g5{grid-template-columns:repeat(5,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g12{grid-template-columns:1fr 2fr}
+.g21{grid-template-columns:2fr 1fr}
+
+/* ── BOX ─────────────────────────────────────────────────────── */
+.box{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-width:0}
+.box h3{margin:0 0 10px;font-size:11px;letter-spacing:.5px;color:var(--navy);text-transform:uppercase;font-weight:700}
+
+/* ── KPI CARDS ─────────────────────────────────────────────── */
+.kpi{border-top:3px solid var(--navy)}
+.kpi .lbl{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--navy);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .v{font-size:clamp(22px,2.5vw,38px);font-weight:800;color:var(--txt);line-height:1;margin-bottom:4px}
+.kpi .s{font-size:11px;color:var(--muted)}
+.kpi.green-top{border-top-color:var(--green)}
+.kpi.red-top{border-top-color:var(--red)}
+.kpi.amber-top{border-top-color:var(--amber)}
+.kpi.cyan-top{border-top-color:var(--cyan)}
+
+/* ── TABELAS ────────────────────────────────────────────────── */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--navy);color:#fff;text-align:left;padding:7px 8px;font-weight:600;white-space:nowrap;font-size:12px}
+td{padding:5px 8px;border-bottom:1px solid var(--line)}
+td.n,th.n{text-align:right}
+tr:hover td{background:#F8FAFC}
+tr.med-row td{background:#EEF4FA;font-weight:700}
+tr.sub-row td{color:var(--muted);font-size:12px}
+tr.sub-row td:first-child{padding-left:22px}
+tr.tot td{font-weight:700;border-top:2px solid var(--navy);background:#EEF4FA}
+.scroll{overflow-x:auto}
+
+/* ── CHARTS ─────────────────────────────────────────────────── */
+.ch{position:relative;height:300px}
+.ch.tall{height:360px}
+.ch.short{height:220px}
+
+/* ── MISC ────────────────────────────────────────────────────── */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
+.badge.g{background:#D5F5E3;color:#1E8449}.badge.r{background:#FDEDEC;color:#C0392B}.badge.a{background:#FEF9E7;color:#B7950B}.badge.b{background:#EBF5FB;color:#1A5276}
+.pbar-wrap{background:#E0EFF5;border-radius:4px;height:8px;overflow:hidden;min-width:80px}
+.pbar{height:100%;border-radius:4px;background:var(--cyan);transition:width .4s}
+.pbar.ok{background:var(--green)}.pbar.bad{background:var(--red)}.pbar.mid{background:var(--amber)}
+#msg{padding:60px 20px;text-align:center;color:var(--muted);font-size:16px}
+.spin{display:inline-block;width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--cyan);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+footer{color:var(--muted);font-size:11px;text-align:center;padding:8px 16px 20px}
+.nota{font-size:12px;color:var(--muted);margin-bottom:10px}
+.sec-title{font-size:15px;font-weight:700;color:var(--navy);margin:16px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--line)}
+.tag-ano{display:inline-block;background:#EBF5FB;color:var(--navy);border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:8px}
+.red{color:var(--red)!important}.green{color:var(--green)!important}.amber{color:var(--amber)!important}
+
+/* ── CALL CENTER ─────────────────────────────────────────────── */
+.colab-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px;margin-bottom:10px}
+.colab-card{background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.colab-head{background:var(--navy);color:#fff;padding:10px 14px;font-weight:700;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.colab-body{padding:12px 14px}
+.colab-kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.ck{background:var(--bg);border-radius:6px;padding:8px;text-align:center}
+.ck .cv{font-size:20px;font-weight:700;color:var(--navy)}
+.ck .cl{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* ── RESPONSIVE ──────────────────────────────────────────────── */
+@media(max-width:1100px){.g5{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(2,1fr)}.g12,.g21,.g2{grid-template-columns:1fr}}
+@media(max-width:640px){.g5,.g4,.g3,.g2{grid-template-columns:repeat(2,1fr)}.bi-titlebar{font-size:15px}.kpi .v{font-size:26px}}
+@media(min-width:1200px){.g2{grid-template-columns:repeat(2,1fr)}.g4{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+<div class="bi-titlebar">Dashboard - Relatório Liderança</div>
+<div class="ctrl-bar">
+  <img src="logo.png" alt="Endoclinic" style="height:44px;display:block">
+  <label class="pick">Mês de referência<select id="selMes"></select></label>
+  <button class="btn" id="btnAtualizar">↻ Atualizar</button>
+</div>
+<nav id="nav"></nav>
+<main>
+  <div id="msg"><span class="spin"></span>Carregando dados da API…</div>
+  <div id="page" style="display:none"></div>
+</main>
+<footer id="foot"></footer>
+
+<script>
+Chart.register(ChartDataLabels);
+
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const TOKEN    = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjb21wYW55X2lkIjoxMTQ0MywidXNlcl9pZCI6MTEzMjJ9.CgiKGbKJqscVPcFRBrWCED8O6SN1CeopxxhWnEyntM4";
+const API      = "https://amigobot-api.amigoapp.com.br/attendances";
+const SHEETS_ID= "1XSL0P6TEbqnNBscPbTpMpct0h4ozLEfH";
+const SHEETS_URL=`https://docs.google.com/spreadsheets/d/${SHEETS_ID}/export?format=xlsx`;
+
+const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+               "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+const MEDICOS_META = [
+  {nome:"Dr. Daniel",      match:"DANIEL",      metas:{Endoscopia:32,  Colonoscopia:112}},
+  {nome:"Dr. Davi",        match:"DAVI",         metas:{Colonoscopia:80}},
+  {nome:"Dra. Larissa",    match:"LARISSA",      metas:{Endoscopia:40, Consulta:56, Manometria:12}},
+  {nome:"Dr. Edimar",      match:"EDIMAR",       metas:{Consulta:60,   Colonoscopia:40}},
+  {nome:"Dra. Jéssica",    match:"JESSICA",      metas:{Consulta:48,   Manometria:16, Colonoscopia:32}},
+  {nome:"Dr. Luiz Ricardo",match:"LUIZ",         metas:{Consulta:48,   Endoscopia:40, Colonoscopia:6}},
+  {nome:"Dr. Robério",     match:"ROB",          metas:{Endoscopia:136,Consulta:68}},
+  {nome:"Dra. Ludmila",    match:"LUDMILA",      metas:{Consulta:332}},
+  {nome:"Dra. Liz",        match:"LIZ MARJORI",  metas:{Elastografia:0}},
+];
+const META_RESP = 80;
+const META_PH   = 8;
+
+const COLORS = {
+  navy:"#003B71", teal:"#0D7A8A", cyan:"#1EA7C4",
+  green:"#1E8449", red:"#C0392B", amber:"#D4A017", soft:"#B8D4DF",
+  prev:"#90B4D4",
+  series:["#1EA7C4","#003B71","#27AE60","#E67E22","#8E44AD","#C0392B","#F39C12","#1ABC9C","#E74C3C","#2980B9"]
+};
+
+// ─── CLASSIFICAÇÃO ───────────────────────────────────────────────────────────
+function classProc(tipo) {
+  const t = (tipo||"").toUpperCase();
+  if(t.includes("ENDOSCOP"))   return "Endoscopia";
+  if(t.includes("COLONOSCOP")) return "Colonoscopia";
+  if(t.includes("CONSULTA"))   return "Consulta";
+  if(t.includes("MANOMETRI"))  return "Manometria";
+  if(t.includes("RESPIRAT"))   return "Teste Respiratório";
+  if(t.includes("PHMETRIA")||t.includes("PH METRIA")||t.includes("PH-METRIA")) return "pH Metria";
+  if(t.includes("ELASTOGRAFIA")) return "Elastografia";
+  return "Outros";
+}
+function mapMedico(nome) {
+  const n = (nome||"").toUpperCase();
+  for(const m of MEDICOS_META) if(n.includes(m.match)) return m.nome;
+  return nome;
+}
+
+// ─── MÊS SELECTOR ────────────────────────────────────────────────────────────
+const sel = document.getElementById("selMes");
+const now = new Date();
+// Opção "Todos" primeiro
+const optTodos = document.createElement("option");
+optTodos.value = `todos-${now.getFullYear()}`;
+optTodos.text  = `Todos (${now.getFullYear()})`;
+sel.appendChild(optTodos);
+// Opções por mês
+for(let y=now.getFullYear(); y>=2025; y--) {
+  const maxM = y===now.getFullYear() ? now.getMonth() : 11;
+  for(let m=maxM; m>=0; m--) {
+    const o = document.createElement("option");
+    o.value = `${y}-${String(m+1).padStart(2,"0")}`;
+    o.text  = `${MESES[m]} ${y}`;
+    sel.appendChild(o);
+  }
+}
+const defDate = now.getDate()<=2 ? new Date(now.getFullYear(),now.getMonth()-1,1) : now;
+sel.value = `${defDate.getFullYear()}-${String(defDate.getMonth()+1).padStart(2,"0")}`;
+
+function tituloRef() {
+  if(anoMesSel.startsWith("todos-")) return `Ano ${anoMesSel.split("-")[1]} (acumulado)`;
+  const [a,m]=anoMesSel.split("-").map(Number);
+  return `${MESES[m-1]} ${a}`;
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+const TABS = [
+  {id:"producao",   label:"Produção Médica"},
+  {id:"metas",      label:"Metas da Equipe"},
+  {id:"callcenter", label:"Call Center"},
+];
+let abaAtual = "producao";
+const navEl = document.getElementById("nav");
+TABS.forEach(t => {
+  const b = document.createElement("button");
+  b.textContent = t.label;
+  b.dataset.tab = t.id;
+  if(t.id===abaAtual) b.classList.add("on");
+  b.onclick = () => { abaAtual=t.id; renderPage(); updateNav(); };
+  navEl.appendChild(b);
+});
+function updateNav(){ navEl.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.tab===abaAtual)); }
+
+// ─── ESTADO ───────────────────────────────────────────────────────────────────
+let DATA_API     = [];
+let DATA_API_ANT = [];
+let DATA_SHEETS  = null;
+let anoMesSel   = sel.value;
+let carregando  = false;
+
+// ─── FETCH ────────────────────────────────────────────────────────────────────
+async function fetchMes(anoMes) {
+  let ini, end;
+  if(anoMes.startsWith("todos-")) {
+    const ano = parseInt(anoMes.split("-")[1]);
+    ini = `${ano}-01-01`;
+    const hoje = new Date();
+    end = ano===hoje.getFullYear()
+      ? `${ano}-${String(hoje.getMonth()+1).padStart(2,"0")}-${String(hoje.getDate()).padStart(2,"0")}`
+      : `${ano}-12-31`;
+  } else {
+    const [ano,mes] = anoMes.split("-").map(Number);
+    const fim = new Date(ano,mes,0);
+    ini = `${ano}-${String(mes).padStart(2,"0")}-01`;
+    end = `${ano}-${String(mes).padStart(2,"0")}-${String(fim.getDate()).padStart(2,"0")}`;
+  }
+  const r = await fetch(`${API}?start_date=${ini}&end_date=${end}&status=ALL`,
+    {headers:{Authorization:`Bearer ${TOKEN}`}});
+  if(!r.ok) throw new Error(`API ${r.status}`);
+  const j = await r.json();
+  return j.data||[];
+}
+
+function prevYearKey(anoMes) {
+  if(anoMes.startsWith("todos-")) return `todos-${parseInt(anoMes.split("-")[1])-1}`;
+  const [a,m]=anoMes.split("-");
+  return `${parseInt(a)-1}-${m}`;
+}
+async function fetchSheets() {
+  const r = await fetch(SHEETS_URL);
+  if(!r.ok) throw new Error("Sheets "+r.status);
+  const ab = await r.arrayBuffer();
+  return XLSX.read(ab,{type:"array"});
+}
+function filtrar(rows) {
+  return rows.filter(r=>{
+    const n=((r.user&&r.user.name)||"").toUpperCase();
+    if(n.includes("WALTER PEREIRA DE CARVALHO")) return false;
+    if(n.includes("LIZ MARJORIE")) {
+      const tipo=((r.agenda_event&&r.agenda_event.name)||"").toUpperCase();
+      return tipo.includes("ELASTOGRAFIA");
+    }
+    return true;
+  });
+}
+function normalizar(r) {
+  const status={done:"Finalizado",canceled:"Cancelado",missed:"Faltou",
+    confirmed:"Confirmado",arrived:"Chegou",in_attendance:"Em Atendimento"}[r.status]||r.status;
+  const tipo=(r.agenda_event&&r.agenda_event.name)||"";
+  const medico=(r.user&&r.user.name)||"";
+  return {status, tipo, medico:mapMedico(medico), proc:classProc(tipo),
+    local:(r.place&&r.place.name)||"",
+    pagamento:r.payment_method===null?"Convênio":"Particular",
+    data:r.start_date};
+}
+
+// ─── LOAD ─────────────────────────────────────────────────────────────────────
+async function load(force=false) {
+  if(carregando) return;
+  const ym = sel.value;
+  if(!force && ym===anoMesSel && DATA_API.length>0){ renderPage(); return; }
+  carregando=true;
+  anoMesSel=ym;
+  const ymAnt=prevYearKey(ym);
+  document.getElementById("msg").innerHTML='<span class="spin"></span>Carregando dados da API…';
+  document.getElementById("msg").style.display="";
+  document.getElementById("page").style.display="none";
+  try {
+    const [apiRows, apiRowsAnt, wb] = await Promise.all([
+      fetchMes(ym),
+      fetchMes(ymAnt).catch(()=>[]),
+      DATA_SHEETS?null:fetchSheets()
+    ]);
+    DATA_API     = filtrar(apiRows).map(normalizar);
+    DATA_API_ANT = filtrar(apiRowsAnt).map(normalizar);
+    if(wb) DATA_SHEETS = wb;
+    document.getElementById("msg").style.display="none";
+    document.getElementById("page").style.display="";
+    document.getElementById("foot").textContent=
+      `API Amigo + Google Sheets · Atualizado ${new Date().toLocaleString("pt-BR")}`;
+    renderPage();
+  } catch(e) {
+    document.getElementById("msg").innerHTML=`⚠️ Erro: ${e.message}`;
+  } finally { carregando=false; }
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const fmt = n=>n.toLocaleString("pt-BR");
+const pct = n=>(n*100).toFixed(1)+"%";
+const pctSigned = n=>(n>=0?"+":"")+pct(n);
+
+function makeChart(ctx,cfg) {
+  const ex=Chart.getChart(ctx);
+  if(ex) ex.destroy();
+  return new Chart(ctx,cfg);
+}
+
+function kpiCard(lbl,val,sub,topCls="") {
+  return `<div class="box kpi ${topCls}">
+    <div class="lbl">${lbl}</div>
+    <div class="v">${val}</div>
+    <div class="s">${sub}</div>
+  </div>`;
+}
+
+function metaBadge(real,meta) {
+  if(!meta) return "";
+  const p=real/meta;
+  if(p>=1)   return `<span class="badge g">✓ ${pct(p)}</span>`;
+  if(p>=0.7) return `<span class="badge a">${pct(p)}</span>`;
+  return `<span class="badge r">${pct(p)}</span>`;
+}
+function progressBar(real,meta) {
+  if(!meta) return "";
+  const p=Math.min(real/meta,1);
+  const cls=p>=1?"ok":p>=.7?"mid":"bad";
+  return `<div class="pbar-wrap"><div class="pbar ${cls}" style="width:${(p*100).toFixed(1)}%"></div></div>`;
+}
+function metaColor(real,meta){
+  const p=meta>0?real/meta:0;
+  return p>=1?"var(--green)":p>=.7?"var(--amber)":"var(--red)";
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderPage() {
+  const pg=document.getElementById("page");
+  Chart.helpers.each(Chart.instances,c=>c.destroy());
+  if     (abaAtual==="producao")   pg.innerHTML=renderProducao();
+  else if(abaAtual==="metas")      pg.innerHTML=renderMetasEquipe();
+  else if(abaAtual==="callcenter") pg.innerHTML=renderCallCenter();
+  drawCharts();
+}
+
+// ─── PRODUÇÃO MÉDICA ─────────────────────────────────────────────────────────
+function renderProducao() {
+  const anoBase = anoMesSel.startsWith("todos-") ? parseInt(anoMesSel.split("-")[1]) : parseInt(anoMesSel.split("-")[0]);
+  const tituloMes = tituloRef();
+  const anoAnt = anoBase-1;
+
+  const finais=DATA_API.filter(r=>r.status==="Finalizado");
+  const faltou=DATA_API.filter(r=>r.status==="Faltou").length;
+  const cancel=DATA_API.filter(r=>r.status==="Cancelado").length;
+  const total=DATA_API.length;
+  const comparec=(finais.length+faltou)>0?finais.length/(finais.length+faltou):0;
+  const pCancel=total>0?cancel/total:0;
+
+  // Finalizados do ano anterior
+  const finaisAnt=DATA_API_ANT.filter(r=>r.status==="Finalizado");
+  const totalAnt=DATA_API_ANT.length;
+
+  // Tabela Comparativa Geral por profissional
+  const profMap={};
+  DATA_API.forEach(r=>{
+    const n=r.medico||"—";
+    if(!profMap[n]) profMap[n]={total:0,fin:0,can:0,fal:0,conv:0,part:0};
+    profMap[n].total++;
+    if(r.status==="Finalizado") profMap[n].fin++;
+    if(r.status==="Cancelado")  profMap[n].can++;
+    if(r.status==="Faltou")     profMap[n].fal++;
+    if(r.pagamento==="Convênio") profMap[n].conv++;
+    else profMap[n].part++;
+  });
+  const profList=Object.entries(profMap).sort((a,b)=>b[1].fin-a[1].fin);
+
+  // Metas por médico com sub-linhas
+  const metaRows=MEDICOS_META.map(m=>{
+    const real=finais.filter(r=>r.medico===m.nome);
+    const porProc={};
+    real.forEach(r=>{ porProc[r.proc]=(porProc[r.proc]||0)+1; });
+    const metaTotal=Object.values(m.metas).reduce((a,b)=>a+b,0);
+    const realTotal=Object.entries(m.metas).reduce((s,[p])=>s+(porProc[p]||0),0);
+    return {medico:m.nome,metas:m.metas,porProc,metaTotal,realTotal};
+  }).filter(r=>r.metaTotal>0);
+
+  const qtdResp=finais.filter(r=>r.proc==="Teste Respiratório").length;
+  const qtdPH  =finais.filter(r=>r.proc==="pH Metria").length;
+
+  // Variação vs ano anterior (total)
+  const varTotal=totalAnt>0?(total-totalAnt)/totalAnt:null;
+  const varFin  =finaisAnt.length>0?(finais.length-finaisAnt.length)/finaisAnt.length:null;
+
+  return `
+  <p class="nota">Referência: <strong>${tituloMes}</strong> — ${fmt(total)} atendimentos carregados
+    ${totalAnt>0?`<span class="tag-ano">vs ${anoAnt}: ${fmt(totalAnt)}</span>`:""}
+  </p>
+
+  <!-- KPIs -->
+  <div class="grid g4" style="margin-bottom:12px">
+    ${kpiCard("Total de Atendimentos",fmt(total),"todos os status")}
+    ${kpiCard("Finalizados",fmt(finais.length),pct(total>0?finais.length/total:0)+" do total"+(varFin!==null?` | vs ${anoAnt}: ${fmt(finaisAnt.length)} (${pctSigned(varFin)})`:""),"green-top")}
+    ${kpiCard("% Comparecimento",pct(comparec),"finalizados ÷ (finalizados + faltaram)",
+      comparec>=.85?"green-top":comparec>=.7?"amber-top":"red-top")}
+    ${kpiCard("% Cancelamento",pct(pCancel),"cancelamentos no período",
+      pCancel<=.1?"green-top":pCancel<=.2?"amber-top":"red-top")}
+  </div>
+
+  <!-- Gráficos linha 1 -->
+  <div class="grid g2" style="margin-bottom:10px">
+    <div class="box">
+      <h3>Total de Atendimentos no Período</h3>
+      <div class="ch tall"><canvas id="ch-periodo"></canvas></div>
+    </div>
+    <div class="box">
+      <h3>Produção por Profissional</h3>
+      <div class="ch tall"><canvas id="ch-producao"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Gráficos linha 2 - Ano Anterior -->
+  <div class="grid g2" style="margin-bottom:10px">
+    <div class="box">
+      <h3>Total de Atendimentos no Período × Ano Anterior</h3>
+      <div class="ch"><canvas id="ch-anoant"></canvas></div>
+    </div>
+    <div class="box">
+      <h3>Produção Profissional em Relação ao Ano Anterior</h3>
+      <div class="ch"><canvas id="ch-profant"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Tabelas -->
+  <div class="grid g2">
+    <div class="box">
+      <h3>Tabela Comparativa Geral</h3>
+      <div class="scroll"><table>
+        <tr>
+          <th>Profissional</th>
+          <th>Forma Pgto.</th>
+          <th class="n">Total</th>
+          <th class="n">Finalizados</th>
+          <th class="n">Cancelados</th>
+          <th class="n">Faltou</th>
+          <th class="n">% Compar.</th>
+          <th class="n">% Cancel.</th>
+        </tr>
+        ${profList.map(([n,v])=>{
+          const comp=(v.fin+v.fal)>0?v.fin/(v.fin+v.fal):0;
+          const canc=v.total>0?v.can/v.total:0;
+          const pgto=v.conv>v.part?"Convênio":v.part>v.conv?"Particular":"Misto";
+          return `<tr>
+            <td>${n}</td>
+            <td>${pgto}</td>
+            <td class="n">${v.total}</td>
+            <td class="n">${v.fin}</td>
+            <td class="n">${v.can||0}</td>
+            <td class="n">${v.fal||0}</td>
+            <td class="n" style="color:${metaColor(comp,1)}">${pct(comp)}</td>
+            <td class="n">${pct(canc)}</td>
+          </tr>`;
+        }).join("")}
+        <tr class="tot">
+          <td colspan="2">TOTAL</td>
+          <td class="n">${total}</td>
+          <td class="n">${finais.length}</td>
+          <td class="n">${cancel}</td>
+          <td class="n">${faltou}</td>
+          <td class="n">${pct(comparec)}</td>
+          <td class="n">${pct(pCancel)}</td>
+        </tr>
+      </table></div>
+    </div>
+
+    <div class="box">
+      <h3>Médico <span style="font-weight:400;text-transform:none;font-size:11px">Meta Mês / Realizados / % Atingimento</span></h3>
+      <div class="scroll"><table>
+        <tr>
+          <th>Médico / Procedimento</th>
+          <th class="n">Meta Mês</th>
+          <th class="n">Realizados</th>
+          <th class="n">% Atingimento</th>
+        </tr>
+        ${metaRows.map(r=>`
+          <tr class="med-row">
+            <td>${r.medico}</td>
+            <td class="n">${r.metaTotal}</td>
+            <td class="n">${r.realTotal}</td>
+            <td class="n" style="color:${metaColor(r.realTotal,r.metaTotal)}">${pct(r.metaTotal>0?r.realTotal/r.metaTotal:0)}</td>
+          </tr>
+          ${Object.entries(r.metas).map(([proc,meta])=>{
+            const real=r.porProc[proc]||0;
+            return `<tr class="sub-row">
+              <td>↳ ${proc}s</td>
+              <td class="n">${meta}</td>
+              <td class="n">${real}</td>
+              <td class="n" style="color:${metaColor(real,meta)}">${pct(meta>0?real/meta:0)}</td>
+            </tr>`;
+          }).join("")}
+        `).join("")}
+        ${META_RESP>0||qtdResp>0?`
+          <tr class="med-row">
+            <td>Teste Respiratório</td>
+            <td class="n">${META_RESP}</td>
+            <td class="n">${qtdResp}</td>
+            <td class="n" style="color:${metaColor(qtdResp,META_RESP)}">${pct(META_RESP>0?qtdResp/META_RESP:0)}</td>
+          </tr>`:""}
+        ${META_PH>0||qtdPH>0?`
+          <tr class="med-row">
+            <td>pH Metria</td>
+            <td class="n">${META_PH}</td>
+            <td class="n">${qtdPH}</td>
+            <td class="n" style="color:${metaColor(qtdPH,META_PH)}">${pct(META_PH>0?qtdPH/META_PH:0)}</td>
+          </tr>`:""}
+      </table></div>
+    </div>
+  </div>
+  `;
+}
+
+// ─── METAS DA EQUIPE ─────────────────────────────────────────────────────────
+function renderMetasEquipe() {
+  const tit = tituloRef();
+  const finais = DATA_API.filter(r=>r.status==="Finalizado");
+  const total  = DATA_API.length;
+
+  // Calcular realizado por médico/procedimento
+  function calcMedico(m) {
+    const porProc={};
+    finais.filter(r=>r.medico===m.nome).forEach(r=>{ porProc[r.proc]=(porProc[r.proc]||0)+1; });
+    const metaTotal = Object.values(m.metas).reduce((a,b)=>a+b,0);
+    const realTotal = Object.entries(m.metas).reduce((s,[p])=>s+(porProc[p]||0),0);
+    const pct_num   = metaTotal>0 ? realTotal/metaTotal : 0;
+    return {metaTotal, realTotal, porProc, pct_num};
+  }
+
+  // Resumo geral
+  const medicos = MEDICOS_META.filter(m=>Object.values(m.metas).reduce((a,b)=>a+b,0)>0);
+  let totalMeta=0, totalReal=0, bateram=0;
+  medicos.forEach(m=>{
+    const c=calcMedico(m);
+    totalMeta+=c.metaTotal; totalReal+=c.realTotal;
+    if(c.pct_num>=1) bateram++;
+  });
+  // Resp/pH
+  const qtdResp=finais.filter(r=>r.proc==="Teste Respiratório").length;
+  const qtdPH  =finais.filter(r=>r.proc==="pH Metria").length;
+  totalMeta+=META_RESP+META_PH; totalReal+=qtdResp+qtdPH;
+  const pGeral=totalMeta>0?totalReal/totalMeta:0;
+
+  function barColor(p){ return p>=1?'var(--green)':p>=.7?'var(--amber)':'var(--red)'; }
+  function badgeMeta(p){
+    if(p>=1)   return `<span style="background:#D5F5E3;color:#1E8449;padding:3px 10px;border-radius:12px;font-weight:700;font-size:12px">✓ Meta Atingida</span>`;
+    if(p>=.7)  return `<span style="background:#FEF9E7;color:#B7950B;padding:3px 10px;border-radius:12px;font-weight:700;font-size:12px">▲ Próximo</span>`;
+    return `<span style="background:#FDEDEC;color:#C0392B;padding:3px 10px;border-radius:12px;font-weight:700;font-size:12px">✗ Abaixo</span>`;
+  }
+
+  // Cards dos médicos
+  const cards = medicos.map(m=>{
+    const {metaTotal,realTotal,porProc,pct_num}=calcMedico(m);
+    const pct_str=(pct_num*100).toFixed(1)+"%";
+    const barW=Math.min(pct_num*100,100).toFixed(1)+"%";
+    const subRows=Object.entries(m.metas).map(([proc,meta])=>{
+      const real=porProc[proc]||0;
+      const pp=meta>0?real/meta:0;
+      const barWP=Math.min(pp*100,100).toFixed(1)+"%";
+      return `<tr>
+        <td style="padding:4px 8px;color:var(--muted);font-size:12px">↳ ${proc}s</td>
+        <td style="padding:4px 8px;text-align:right;font-size:12px">${real}</td>
+        <td style="padding:4px 8px;text-align:right;font-size:12px">${meta}</td>
+        <td style="padding:4px 8px;min-width:80px">
+          <div style="background:#E0E0E0;border-radius:3px;height:6px;overflow:hidden">
+            <div style="height:100%;border-radius:3px;background:${barColor(pp)};width:${barWP}"></div>
+          </div>
+        </td>
+        <td style="padding:4px 8px;text-align:right;font-size:12px;color:${barColor(pp)};font-weight:700">${(pp*100).toFixed(0)}%</td>
+      </tr>`;
+    }).join("");
+
+    return `<div style="background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden;min-width:0">
+      <div style="background:var(--navy);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+        <strong style="font-size:14px">${m.nome}</strong>
+        ${badgeMeta(pct_num)}
+      </div>
+      <div style="padding:12px 14px">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+          <span style="font-size:28px;font-weight:800;color:${barColor(pct_num)}">${pct_str}</span>
+          <div style="flex:1">
+            <div style="background:#E0E0E0;border-radius:4px;height:10px;overflow:hidden">
+              <div style="height:100%;border-radius:4px;background:${barColor(pct_num)};width:${barW};transition:width .4s"></div>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px">${realTotal} de ${metaTotal} procedimentos</div>
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <tr style="background:#F4F6FA">
+            <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--navy)">Procedimento</th>
+            <th style="padding:5px 8px;text-align:right;font-size:11px;color:var(--navy)">Real.</th>
+            <th style="padding:5px 8px;text-align:right;font-size:11px;color:var(--navy)">Meta</th>
+            <th style="padding:5px 8px;font-size:11px;color:var(--navy)">Progresso</th>
+            <th style="padding:5px 8px;text-align:right;font-size:11px;color:var(--navy)">%</th>
+          </tr>
+          ${subRows}
+        </table>
+      </div>
+    </div>`;
+  }).join("");
+
+  // Cards especiais: Resp e pH
+  function cardEspecial(titulo, meta, real) {
+    const p=meta>0?real/meta:0;
+    const barW=Math.min(p*100,100).toFixed(1)+"%";
+    return `<div style="background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden">
+      <div style="background:var(--teal);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+        <strong style="font-size:14px">${titulo}</strong>
+        ${badgeMeta(p)}
+      </div>
+      <div style="padding:12px 14px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="font-size:28px;font-weight:800;color:${barColor(p)}">${(p*100).toFixed(1)}%</span>
+          <div style="flex:1">
+            <div style="background:#E0E0E0;border-radius:4px;height:10px;overflow:hidden">
+              <div style="height:100%;border-radius:4px;background:${barColor(p)};width:${barW};transition:width .4s"></div>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px">${real} de ${meta} realizados</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  return `
+  <p class="nota">Referência: <strong>${tit}</strong> — ${fmt(total)} atendimentos carregados</p>
+
+  <!-- Resumo geral -->
+  <div class="grid g4" style="margin-bottom:14px">
+    <div class="box kpi">
+      <div class="lbl">Meta Global</div>
+      <div class="v">${fmt(totalMeta)}</div>
+      <div class="s">total de procedimentos meta</div>
+    </div>
+    <div class="box kpi cyan-top">
+      <div class="lbl">Realizados</div>
+      <div class="v">${fmt(totalReal)}</div>
+      <div class="s">${pct(pGeral)} da meta global</div>
+    </div>
+    <div class="box kpi ${bateram>=medicos.length*.6?"green-top":"amber-top"}">
+      <div class="lbl">Médicos que Bateram a Meta</div>
+      <div class="v">${bateram} / ${medicos.length}</div>
+      <div class="s">${pct(medicos.length>0?bateram/medicos.length:0)} da equipe</div>
+    </div>
+    <div class="box kpi">
+      <div class="lbl">% Atingimento Geral</div>
+      <div class="v" style="color:${barColor(pGeral)}">${pct(pGeral)}</div>
+      <div class="s">${realTotal} de ${totalMeta} procedimentos</div>
+    </div>
+  </div>
+
+  <!-- Barra de progresso geral -->
+  <div class="box" style="margin-bottom:14px">
+    <h3>Progresso Geral da Equipe</h3>
+    <div style="display:flex;align-items:center;gap:16px">
+      <div style="flex:1">
+        <div style="background:#E0E0E0;border-radius:6px;height:16px;overflow:hidden">
+          <div style="height:100%;border-radius:6px;background:${barColor(pGeral)};width:${Math.min(pGeral*100,100).toFixed(1)}%;transition:width .6s"></div>
+        </div>
+      </div>
+      <span style="font-size:18px;font-weight:800;color:${barColor(pGeral)};min-width:60px;text-align:right">${pct(pGeral)}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:var(--muted)">
+      <span>0%</span><span>Meta: ${fmt(totalMeta)}</span><span>100%</span>
+    </div>
+  </div>
+
+  <!-- Grid de cards por médico -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;margin-bottom:12px">
+    ${cards}
+    ${META_RESP>0?cardEspecial("Teste Respiratório",META_RESP,qtdResp):""}
+    ${META_PH>0?cardEspecial("pH Metria",META_PH,qtdPH):""}
+  </div>
+  `;
+}
+
+// ─── RESUMO (mantido para uso interno) ────────────────────────────────────────
+function renderResumo() {
+  const [ano,mes]=anoMesSel.split("-").map(Number);
+  const tituloMes=`${MESES[mes-1]} ${ano}`;
+  const total   =DATA_API.length;
+  const final_  =DATA_API.filter(r=>r.status==="Finalizado").length;
+  const faltou  =DATA_API.filter(r=>r.status==="Faltou").length;
+  const cancel  =DATA_API.filter(r=>r.status==="Cancelado").length;
+  const confirm =DATA_API.filter(r=>r.status==="Confirmado").length;
+  const comparec=(final_+faltou)>0?final_/(final_+faltou):0;
+  const finais  =DATA_API.filter(r=>r.status==="Finalizado");
+  const porProc={};
+  finais.forEach(r=>{ porProc[r.proc]=(porProc[r.proc]||0)+1; });
+  const procsSorted=Object.entries(porProc).sort((a,b)=>b[1]-a[1]);
+  let metaTotal=0,realTotal=0;
+  MEDICOS_META.forEach(m=>{
+    Object.entries(m.metas).forEach(([proc,meta])=>{
+      metaTotal+=meta;
+      realTotal+=DATA_API.filter(r=>r.status==="Finalizado"&&r.medico===m.nome&&r.proc===proc).length;
+    });
+  });
+  metaTotal+=META_RESP+META_PH;
+  realTotal+=DATA_API.filter(r=>r.status==="Finalizado"&&r.proc==="Teste Respiratório").length;
+  realTotal+=DATA_API.filter(r=>r.status==="Finalizado"&&r.proc==="pH Metria").length;
+  const pMeta=metaTotal>0?realTotal/metaTotal:0;
+
+  return `
+  <p class="nota">Referência: <strong>${tituloMes}</strong> — ${fmt(total)} atendimentos carregados</p>
+  <div class="grid g5">
+    ${kpiCard("Total Agendados",fmt(total),"todos os status")}
+    ${kpiCard("Finalizados",fmt(final_),pct(total>0?final_/total:0)+" do total","green-top")}
+    ${kpiCard("Faltaram",fmt(faltou),pct((final_+faltou)>0?faltou/(final_+faltou):0)+" das presenças esperadas","red-top")}
+    ${kpiCard("Cancelados",fmt(cancel),"cancelamentos no período","amber-top")}
+    ${kpiCard("% Comparecimento",pct(comparec),"finalizados ÷ (finalizados + faltaram)",comparec>=.85?"green-top":comparec>=.7?"amber-top":"red-top")}
+  </div>
+  <div class="grid g2">
+    <div class="box">
+      <h3>Realizados × Meta Global</h3>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px">
+        <span style="font-size:36px;font-weight:800;color:${pMeta>=1?COLORS.green:pMeta>=.7?COLORS.amber:COLORS.red}">${fmt(realTotal)}</span>
+        <span style="color:var(--muted);font-size:14px">de <strong>${fmt(metaTotal)}</strong> procedimentos<br>${metaBadge(realTotal,metaTotal)}</span>
+      </div>
+      ${progressBar(realTotal,metaTotal)}
+    </div>
+    <div class="box">
+      <h3>Procedimentos Realizados por Tipo</h3>
+      <div class="scroll"><table>
+        <tr><th>Procedimento</th><th class="n">Qtd</th><th class="n">%</th></tr>
+        ${procsSorted.map(([p,q])=>`<tr><td>${p}</td><td class="n">${fmt(q)}</td><td class="n">${pct(final_>0?q/final_:0)}</td></tr>`).join("")}
+        <tr class="tot"><td>Total Finalizados</td><td class="n">${fmt(final_)}</td><td class="n">100%</td></tr>
+      </table></div>
+    </div>
+  </div>
+  <div class="grid g2">
+    <div class="box"><h3>Status dos Atendimentos</h3><div class="ch short"><canvas id="ch-status"></canvas></div></div>
+    <div class="box"><h3>Finalizados por Procedimento</h3><div class="ch short"><canvas id="ch-proc"></canvas></div></div>
+  </div>`;
+}
+
+// ─── CALL CENTER ─────────────────────────────────────────────────────────────
+function renderCallCenter() {
+  if(!DATA_SHEETS) return `<div id="msg">⚠️ Dados do Google Sheets não carregados.</div>`;
+  const [ano,mes]=anoMesSel.split("-").map(Number);
+  const nomeMes=MESES[mes-1];
+  const COLABS=[
+    {nome:"Yuri",       aba:"Yuri Meta"},
+    {nome:"Débora",     aba:"Débora Meta"},
+    {nome:"Dayane",     aba:"Dayane Meta"},
+    {nome:"Ana Cláudia",aba:"Ana Cláudia"},
+    {nome:"Dávila",     aba:"Davila"},
+  ];
+  function lerAba(nome) {
+    const variantes=[nome,nome.replace("é","e").replace("â","a").replace("á","a").replace("ú","u").replace("ê","e")];
+    for(const v of variantes) if(DATA_SHEETS.SheetNames.includes(v)) return XLSX.utils.sheet_to_json(DATA_SHEETS.Sheets[v],{header:1,defval:null});
+    const found=DATA_SHEETS.SheetNames.find(s=>s.toLowerCase().includes(nome.split(" ")[0].toLowerCase()));
+    if(found) return XLSX.utils.sheet_to_json(DATA_SHEETS.Sheets[found],{header:1,defval:null});
+    return null;
+  }
+  function parseDados(rows) {
+    if(!rows||rows.length<2) return null;
+    const metasMap={};
+    for(let i=1;i<=6&&i<rows.length;i++){
+      const r=rows[i];
+      if(r&&r[0]&&r[1]!==null&&!isNaN(Number(r[1])))
+        metasMap[r[0]]={meta:Number(r[1])||0,colab:Number(r[2])||0};
+    }
+    let dataStart=-1;
+    for(let i=0;i<rows.length;i++){
+      const r=rows[i];
+      if(r&&(r[0]==="Data"||String(r[0]).includes("Data"))){dataStart=i+1;break;}
+    }
+    let mktzapSum=0,agendSum=0,dias=0;
+    if(dataStart>0){
+      for(let i=dataStart;i<rows.length;i++){
+        const r=rows[i];
+        if(!r||!r[0]) continue;
+        const parts=String(r[0]).split("/");
+        if(parts.length<3) continue;
+        const dMes=parseInt(parts[1]);
+        const dAno=parseInt(parts[2])+(parseInt(parts[2])<100?2000:0);
+        if(dMes===mes&&dAno===ano){
+          const mk=parseFloat(r[2])||0, ag=parseFloat(r[3])||0;
+          if(mk>0||ag>0){mktzapSum+=mk;agendSum+=ag;dias++;}
+        }
+      }
+    }
+    const conv=mktzapSum>0?agendSum/mktzapSum:null;
+    return {metas:metasMap,mktzap:mktzapSum,agend:agendSum,conv,dias};
+  }
+  const cards=COLABS.map(c=>{
+    const rows=lerAba(c.aba);
+    const d=parseDados(rows);
+    if(!d) return `<div class="colab-card"><div class="colab-head">${c.nome}<span style="font-size:12px">— sem dados</span></div></div>`;
+    const conv=d.conv!==null?`<span class="${d.conv>=.35?"green":d.conv>=.25?"amber":"red"}">${pct(d.conv)}</span>`:"—";
+    const metaRows=Object.entries(d.metas).map(([proc,{meta,colab}])=>`
+      <tr><td>${proc}</td><td class="n">${fmt(meta)}</td><td class="n">${fmt(colab)}</td><td class="n">—</td></tr>`).join("");
+    return `<div class="colab-card">
+      <div class="colab-head">${c.nome}<span style="font-size:13px;opacity:.85">${nomeMes}</span></div>
+      <div class="colab-body">
+        <div class="colab-kpi-row">
+          <div class="ck"><div class="cv">${fmt(d.mktzap)}</div><div class="cl">MKTZAP</div></div>
+          <div class="ck"><div class="cv">${fmt(d.agend)}</div><div class="cl">Agendamentos</div></div>
+          <div class="ck"><div class="cv">${conv}</div><div class="cl">Conversão</div></div>
+        </div>
+        <div class="scroll"><table>
+          <tr><th>Procedimento</th><th class="n">Meta Total</th><th class="n">Meta Colab.</th><th class="n">Realiz.</th></tr>
+          ${metaRows}
+        </table></div>
+        ${d.dias>0?`<p class="nota" style="margin-top:8px">${d.dias} dias úteis com registro.</p>`:"<p class='nota' style='margin-top:8px'>Sem lançamentos para este mês.</p>"}
+      </div>
+    </div>`;
+  }).join("");
+  return `<p class="nota">Google Sheets — ${nomeMes} ${ano}</p><div class="colab-grid">${cards}</div>`;
+}
+
+// ─── GRÁFICOS ─────────────────────────────────────────────────────────────────
+function drawCharts() {
+  if(abaAtual==="producao") drawChartsProducao();
+}
+
+function drawChartsResumo() {
+  const el1=document.getElementById("ch-status");
+  if(el1){
+    const grp={};
+    DATA_API.forEach(r=>{ grp[r.status]=(grp[r.status]||0)+1; });
+    const labels=Object.keys(grp), vals=Object.values(grp);
+    const colorMap={Finalizado:COLORS.green,Faltou:COLORS.red,Cancelado:COLORS.amber,Confirmado:COLORS.cyan};
+    const colors=labels.map(l=>colorMap[l]||COLORS.soft);
+    makeChart(el1,{type:"doughnut",data:{labels,datasets:[{data:vals,backgroundColor:colors,borderWidth:2}]},
+      options:{plugins:{legend:{position:"right"},datalabels:{color:"#fff",font:{weight:"bold",size:12},formatter:(v)=>v>0?v:""}},cutout:"55%"}});
+  }
+  const el2=document.getElementById("ch-proc");
+  if(el2){
+    const finais=DATA_API.filter(r=>r.status==="Finalizado");
+    const grp={};
+    finais.forEach(r=>{ grp[r.proc]=(grp[r.proc]||0)+1; });
+    const sorted=Object.entries(grp).sort((a,b)=>b[1]-a[1]);
+    makeChart(el2,{type:"pie",data:{labels:sorted.map(x=>x[0]),datasets:[{data:sorted.map(x=>x[1]),
+      backgroundColor:COLORS.series,borderWidth:2}]},
+      options:{plugins:{legend:{position:"right"},datalabels:{color:"#fff",font:{weight:"bold",size:11},formatter:(v)=>v>5?v:""}}}});
+  }
+}
+
+function drawChartsProducao() {
+  const finais=DATA_API.filter(r=>r.status==="Finalizado");
+  const finaisAnt=DATA_API_ANT.filter(r=>r.status==="Finalizado");
+
+  // ── Gráfico 1: Atendimentos por Tipo (por procedimento, para todos)
+  const el1=document.getElementById("ch-periodo");
+  if(el1){
+    const tiposOrder=["Endoscopia","Colonoscopia","Consulta","Manometria","Teste Respiratório","pH Metria","Elastografia","Outros"];
+    const byTipo={};
+    finais.forEach(r=>{
+      if(!byTipo[r.proc]) byTipo[r.proc]=0;
+      byTipo[r.proc]++;
+    });
+    const labels=tiposOrder.filter(t=>byTipo[t]>0);
+    const vals=labels.map(t=>byTipo[t]||0);
+    const byTipoAnt={};
+    finaisAnt.forEach(r=>{ byTipoAnt[r.proc]=(byTipoAnt[r.proc]||0)+1; });
+    const valsAnt=labels.map(t=>byTipoAnt[t]||0);
+
+    makeChart(el1,{type:"bar",data:{labels,datasets:[
+      {label:"Atual",data:vals,backgroundColor:COLORS.navy,borderRadius:4},
+      {label:"Ano Anterior",data:valsAnt,backgroundColor:COLORS.prev,borderRadius:4}
+    ]},options:{
+      plugins:{legend:{position:"top",labels:{boxWidth:12}},
+        datalabels:{anchor:"end",align:"end",color:COLORS.navy,font:{weight:"bold",size:11},
+          formatter:(v)=>v>0?v:""}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:11}}},
+              y:{grid:{color:"#E8F0F5"},ticks:{font:{size:11}}}}}});
+  }
+
+  // ── Gráfico 2: Produção por Profissional (horizontal bar)
+  const el2=document.getElementById("ch-producao");
+  if(el2){
+    const grp={};
+    finais.forEach(r=>{ grp[r.medico]=(grp[r.medico]||0)+1; });
+    const sorted=Object.entries(grp).sort((a,b)=>b[1]-a[1]).slice(0,15);
+    makeChart(el2,{type:"bar",data:{labels:sorted.map(x=>x[0]),datasets:[{
+      label:"Finalizados",data:sorted.map(x=>x[1]),backgroundColor:COLORS.navy,borderRadius:4}]},
+      options:{indexAxis:"y",
+        plugins:{legend:{display:false},
+          datalabels:{anchor:"end",align:"end",color:COLORS.navy,font:{weight:"bold",size:11}}},
+        scales:{x:{grid:{color:"#E8F0F5"},ticks:{font:{size:11}}},
+                y:{grid:{display:false},ticks:{font:{size:11}}}}}});
+  }
+
+  // ── Gráfico 3: Total Atendimentos × Ano Anterior (grouped bar + linha variação)
+  const el3=document.getElementById("ch-anoant");
+  if(el3){
+    const ano=anoMesSel.startsWith("todos-")?parseInt(anoMesSel.split("-")[1]):parseInt(anoMesSel.split("-")[0]);
+    const totalAtual=DATA_API.length;
+    const totalAnt=DATA_API_ANT.length;
+    const finAtual=finais.length;
+    const finAnt=finaisAnt.length;
+    const varT=totalAnt>0?((totalAtual-totalAnt)/totalAnt)*100:null;
+    const varF=finAnt>0?((finAtual-finAnt)/finAnt)*100:null;
+
+    makeChart(el3,{type:"bar",
+      data:{labels:["Total Agendados","Finalizados"],datasets:[
+        {label:`${ano-1}`,data:[totalAnt,finAnt],backgroundColor:COLORS.prev,borderRadius:4,order:2},
+        {label:`${ano}`,  data:[totalAtual,finAtual],backgroundColor:COLORS.navy,borderRadius:4,order:2},
+        {label:"Variação %",
+          data:[varT!==null?parseFloat(varT.toFixed(1)):null, varF!==null?parseFloat(varF.toFixed(1)):null],
+          type:"line",yAxisID:"y2",borderColor:"#E67E22",backgroundColor:"#E67E22",
+          pointRadius:6,pointBackgroundColor:"#E67E22",tension:.3,order:1,
+          datalabels:{color:"#E67E22",anchor:"end",align:"top",font:{weight:"bold",size:12},
+            formatter:(v)=>v!==null?(v>=0?"+":"")+v+"%":""}}
+      ]},
+      options:{
+        plugins:{legend:{position:"top",labels:{boxWidth:12}},
+          datalabels:{display:false}},
+        scales:{
+          x:{grid:{display:false}},
+          y:{grid:{color:"#E8F0F5"},ticks:{font:{size:11}},title:{display:true,text:"Atendimentos",font:{size:11}}},
+          y2:{position:"right",grid:{display:false},ticks:{font:{size:11},callback:(v)=>v+"%"},
+            title:{display:true,text:"Variação %",font:{size:11}}}
+        }
+      }});
+  }
+
+  // ── Gráfico 4: Produção Profissional vs Ano Anterior (bar por profissional + linha % variação)
+  const el4=document.getElementById("ch-profant");
+  if(el4){
+    const ano=anoMesSel.startsWith("todos-")?parseInt(anoMesSel.split("-")[1]):parseInt(anoMesSel.split("-")[0]);
+    const profAtual={}, profAnt={};
+    finais.forEach(r=>{ profAtual[r.medico]=(profAtual[r.medico]||0)+1; });
+    finaisAnt.forEach(r=>{ profAnt[r.medico]=(profAnt[r.medico]||0)+1; });
+
+    // Médicos com meta (principais)
+    const principais=MEDICOS_META.filter(m=>Object.values(m.metas).reduce((a,b)=>a+b,0)>0).map(m=>m.nome);
+    const todos=Array.from(new Set([...principais,...Object.keys(profAtual),...Object.keys(profAnt)]));
+    const labels=todos.filter(n=>profAtual[n]>0||profAnt[n]>0).sort((a,b)=>(profAtual[b]||0)-(profAtual[a]||0)).slice(0,10);
+
+    const atuals=labels.map(n=>profAtual[n]||0);
+    const ants  =labels.map(n=>profAnt[n]||0);
+    const vars  =labels.map((n,i)=>ants[i]>0?parseFloat((((atuals[i]-ants[i])/ants[i])*100).toFixed(0)):null);
+
+    makeChart(el4,{type:"bar",
+      data:{labels:labels.map(n=>n.replace("Dr. ","").replace("Dra. ","")).map(n=>n.length>12?n.slice(0,12)+"…":n),datasets:[
+        {label:`${ano-1}`,data:ants, backgroundColor:COLORS.prev,borderRadius:4,order:2},
+        {label:`${ano}`,  data:atuals,backgroundColor:COLORS.navy,borderRadius:4,order:2},
+        {label:"Variação %",
+          data:vars,type:"line",yAxisID:"y2",
+          borderColor:"#E67E22",backgroundColor:"#E67E22",
+          pointRadius:5,pointBackgroundColor:"#E67E22",tension:.3,order:1,
+          datalabels:{color:"#E67E22",anchor:"end",align:"top",font:{weight:"bold",size:11},
+            formatter:(v)=>v!==null?(v>=0?"+":"")+v+"%":""}}
+      ]},
+      options:{
+        plugins:{legend:{position:"top",labels:{boxWidth:12}},
+          datalabels:{display:false}},
+        scales:{
+          x:{grid:{display:false},ticks:{font:{size:10}}},
+          y:{grid:{color:"#E8F0F5"},ticks:{font:{size:11}},title:{display:true,text:"Atendimentos",font:{size:11}}},
+          y2:{position:"right",grid:{display:false},ticks:{font:{size:11},callback:(v)=>v+"%"},
+            title:{display:true,text:"Variação %",font:{size:11}}}
+        }
+      }});
+  }
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+sel.addEventListener("change",()=>load(true));
+document.getElementById("btnAtualizar").addEventListener("click",()=>{ DATA_SHEETS=null; load(true); });
+load();
+</script>
+</body>
+</html>
