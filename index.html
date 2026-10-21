@@ -363,10 +363,14 @@ function metaColor(real,meta){
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 function renderPage() {
   const pg=document.getElementById("page");
-  Chart.helpers.each(Chart.instances,c=>c.destroy());
-  if     (abaAtual==="producao")   pg.innerHTML=renderProducao();
-  else if(abaAtual==="metas")      pg.innerHTML=renderMetasEquipe();
-  else if(abaAtual==="callcenter") pg.innerHTML=renderCallCenter();
+  try { Chart.helpers.each(Chart.instances,c=>c.destroy()); } catch(e){}
+  try {
+    if     (abaAtual==="producao")   pg.innerHTML=renderProducao();
+    else if(abaAtual==="metas")      pg.innerHTML=renderMetasEquipe();
+    else if(abaAtual==="callcenter") pg.innerHTML=renderCallCenter();
+  } catch(e) {
+    pg.innerHTML=`<div style="padding:20px;color:#C0392B;background:#FDEDEC;border-radius:8px;margin:10px">⚠️ Erro ao renderizar: ${e.message}<br><small>${e.stack||""}</small></div>`;
+  }
   drawCharts();
 }
 
@@ -700,7 +704,7 @@ function renderMetasEquipe() {
   </div>
 
   <!-- Grid de cards por médico -->
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;margin-bottom:12px">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:12px">
     ${cards}
     ${META_RESP>0?cardEspecial("Teste Respiratório",META_RESP,qtdResp):""}
     ${META_PH>0?cardEspecial("pH Metria",META_PH,qtdPH):""}
